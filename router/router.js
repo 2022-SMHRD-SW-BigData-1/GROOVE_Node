@@ -12,6 +12,7 @@ let conn = mysql.createConnection({
   password: "haksee",
   port: "3307",
   database: "groove", // mysql에서 생성했던 database이름
+  multipleStatements: true
 });
 
 // let conn = mysql.createConnection({
@@ -25,7 +26,7 @@ let conn = mysql.createConnection({
 
 // 메인 페이지
 router.get("/", function(request, response){
-  console.log("은갱이가 서버 배운다!!");
+  console.log("GROOVE 접속!");
 })
 
 router.post("/Join", function (request, response) {
@@ -57,25 +58,29 @@ router.post("/Login", function (request, response) {
   console.log("로그인 서버 접속 감지!");
   const userId = request.body.id;
   const userPw = request.body.pw;
+  let song_list = [];
   console.log(request.body);
-
-  let sql = "select * from user_info where user_id = ? and user_pw = sha1(?)";
+  let sql = "select U.*, S.song_id, S.songlist_date from user_info U inner join songlist_info S on U.user_seq = S.user_seq where user_id = ? and user_pw = sha1(?)";
   conn.query(sql, [userId, userPw], function (err, rows) {
     if (rows) {
       console.log("로그인 성공!");
       console.log(rows[0].user_nick);
       console.log(rows[0].user_favart);
-
       if(!rows[0].user_favart){
         rows[0].user_favart = "";
       }
-      
+      for(let i=0; i<rows.length; i++){
+        console.log(rows[i].song_id);
+        song_list.push(rows[i].song_id);
+      }
       response.json({
         result : "로그인 성공",
+        user_seq : rows[0].user_seq,
         userNick : rows[0].user_nick,
         favArt : rows[0].user_favart,
         recentSong : rows[0].user_recent,
-        favSong : rows[0].user_favsong
+        favSong : rows[0].user_favsong,
+        song_list : song_list.reverse()
       })
     } else {
       console.log("로그인 실패!" + err);
@@ -85,6 +90,7 @@ router.post("/Login", function (request, response) {
 
 router.post("/RecommendSong", function(request, response){
   console.log("추천곡 서버 접속 감지!");
+  
   let userRecSong = (request.body.recSong).split(", ");
 
   if(userRecSong == null){
@@ -97,60 +103,159 @@ router.post("/RecommendSong", function(request, response){
 
   let song_title = [];
   let album_img = [];
-  let song_id = [];
+  let video_url = [];
   let artist_name = [];
+  let video_title = [];
+  let artist_id = [];
+  let song_id = [];
+  let song_lyrics = [];
 
   // 2곡에서 분위기를 꺼내와
-  sql = "select S.song_title, A.artist_name, S.album_id from song_info S inner join artist_song C on S.song_id = C.song_id inner join artist_info A on C.artist_id = A.artist_id where S.song_theme in (select song_theme from song_info where song_id in (?, ?))";
-  conn.query(sql, [userRecSong[0], userRecSong[1]], function (err, rows) {
-    if(rows){
-             
-      for(let i=0;i<9;i++){
-        let ranNum = parseInt(Math.random() * rows.length);    
-        artist_name.push(rows[ranNum].artist_name);
-        song_title.push(rows[ranNum].song_title);
-        album_img.push(rows[ranNum].album_id);
-      }
-
-      console.log("여기도봐봐" + artist_name.length);
-              
-      response.json({
-      song_title : song_title,
-      artist_name : artist_name,
-      album_img : album_img
-
-    });
-      
-    } else{
-      console.log("전송실패!" + err);
-    }    
+  let sql = "select L.song_lyrics, S.song_title, S.song_id, S.album_id, A.artist_name, S.song_theme, V.video_url, V.video_title, A.artist_id from song_info S inner join artist_song C on S.song_id = C.song_id inner join artist_info A on C.artist_id = A.artist_id inner join video_url V on C.artist_id = V.artist_id inner join lyrics_info L on S.song_id = L.song_id where S.song_theme in (select song_theme from song_info where song_id in (?, ?))"
+    conn.query(sql, [userRecSong[0], userRecSong[1]], function (err, rows) {
+      if(rows){
+        for(let i=0;i<9;i++){
+          let ranNum = parseInt(Math.random() * rows.length);    
+          artist_name.push(rows[ranNum].artist_name);
+          song_title.push(rows[ranNum].song_title);
+          album_img.push(rows[ranNum].album_id);
+          video_url.push(rows[ranNum].video_url);
+          video_title.push(rows[ranNum].video_title);
+          artist_id.push(rows[ranNum].artist_id);
+          song_id.push(rows[ranNum].song_id);
+          song_lyrics.push(rows[ranNum].song_lyrics);
+        }
+        
+        response.json({
+          song_title : song_title,
+          artist_name : artist_name,
+          album_img : album_img,
+          video_url : video_url,
+          video_title : video_title,
+          artist_id : artist_id,
+          song_id : song_id,
+          song_lyrics : song_lyrics
+        });
+        
+        
+        
+      } else{
+        console.log("전송실패!" + err);
+      }    
   });
 });
 
 router.post("/MVplayer", function (request, response) {
-  const song_id = request.body.id;
+  const artist_id = request.body.artistid;
+  //request.body.id;
   console.log(request.body.id);
-  let sql = "select song_lyrics from song_info where song_id = ?;";
-  let sql2 = "select artist_name from artist_info where artist_id = (select artist_id from artist_song where song_id = ?);";
-  let sql3 = "select video_title, video_url from video_url where artist_id = (select artist_id from artist_song where song_id = ?);";
-  conn.query(sql + sql2 + sql3, [song_id, song_id, song_id], function (err, rows, field) {
+
+  let sql = "select L.song_lyrics, A.artist_name, V.video_title, V.video_url from video_url V inner join artist_song C on V.song_id = C.song_id inner join artist_info A on C.artist_id = A.artist_id inner join lyrics_info L on V.song_id = L.song_id where V.artist_id = ?";
+
+  conn.query(sql, [artist_id], function (err, rows) {
     if (rows) {
       console.log("전송성공");
-      let sql1_res = rows[0];
-      let sql2_res = rows[1];
-      let sql3_res = rows[2];
-      console.log(sql1_res);
-      console.log(sql2_res);
-      console.log(sql3_res);
+
       response.json({
         result : "성공",
-        artistInfo : rows[0].artist_name,
-        favart : rows[2]
+        lyrics : rows[0].song_lyrics,
+        artistName : rows[0].artist_name,
+        videoTitle : rows[0].video_title,
+        videoUrl : rows[0].video_url
       })
+      
     } else {
       console.log("전송실패!" + err);
     }
   });
+
 });
 
+router.post("/SongList", function (request, response) {
+  console.log("재생 목록 불러오기");
+  // let song_id = request.body.song_list;
+  const user_seq = request.body.user_seq;
+  // console.log(song_id);
+  // song_id = song_id.replace("[", "");
+  // console.log(song_id);
+  // song_id = song_id.replace("]", "");
+  // console.log(song_id);
+  // song_id = song_id.split(",");
+  // console.log(song_id);
+
+  let song_title = [];
+  let artist_name = [];
+  let album_img = [];
+  let song_lyrics = [];
+  
+  let sql = "select distinct R.song_lyrics, S.song_title, A.artist_name, S.album_id from song_info S inner join artist_song C on S.song_id = C.song_id inner join artist_info A on C.artist_id = A.artist_id inner join lyrics_info R on S.song_id = R.song_id where S.song_id in (select distinct L.song_id from songlist_info L inner join user_info U on L.user_seq = U.user_seq where U.user_seq = ?);";
+  conn.query(sql, [user_seq], function (err, rows) {
+    if (rows) {
+
+      for(let i=0; i<rows.length; i++){
+        song_title.push(rows[i].song_title);
+        artist_name.push(rows[i].artist_name);
+        album_img.push(rows[i].album_id);
+        song_lyrics.push(rows[i].song_lyrics);
+      }
+
+      console.log(rows.length);
+      console.log(song_title);
+      console.log(artist_name);
+      console.log(album_img);
+
+      response.json({
+        song_title : song_title.reverse(),
+        artist_name : artist_name.reverse(),
+        album_img : album_img.reverse(),
+        song_lyrics : song_lyrics.reverse()
+      });
+      
+
+    } else {
+      console.log("재생목록 불러오기 실패!" + err);
+    }
+  });
+
+
+});
+
+router.post("/InsertList", function (request, response) {
+  console.log("재생 목록 업데이트하기");
+  const user_seq = request.body.user_seq;
+  const song_id = request.body.song_id;
+  console.log(user_seq);
+  console.log(song_id);
+  
+  let song_list = [];
+
+  let sql = "insert into songlist_info(user_seq, song_id) values(?, ?)";
+  conn.query(sql, [user_seq, song_id], function (err, rows) {
+    if (!err) {
+      sql = "select distinct * from songlist_info";
+      conn.query(sql, function(err, rows){
+
+        for(let i=0; i<rows.length; i++){
+          song_list.push(rows[i].song_id);
+        }
+        console.log(song_list);
+        console.log(song_list.reverse());
+
+        response.json({
+          result : "재생목록 업데이트!",
+          song_list : song_list.reverse()
+        });
+        
+
+      })
+      
+
+
+    } else {
+      console.log("재생목록 업데이트 실패!" + err);
+    }
+  });
+
+
+});
 module.exports = router;
