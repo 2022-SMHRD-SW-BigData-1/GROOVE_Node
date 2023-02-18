@@ -188,7 +188,7 @@ router.post("/SongList", function (request, response) {
   let album_img = [];
   let song_lyrics = [];
   
-  let sql = "select distinct R.song_lyrics, S.song_title, A.artist_name, S.album_id from song_info S inner join artist_song C on S.song_id = C.song_id inner join artist_info A on C.artist_id = A.artist_id inner join lyrics_info R on S.song_id = R.song_id where S.song_id in (select distinct L.song_id from songlist_info L inner join user_info U on L.user_seq = U.user_seq where U.user_seq = ?);";
+  let sql = "select distinct R.song_lyrics, S.song_title, A.artist_name, S.album_id from song_info S inner join artist_song C on S.song_id = C.song_id inner join artist_info A on C.artist_id = A.artist_id inner join lyrics_info R on S.song_id = R.song_id where S.song_id in (select distinct L.song_id from songlist_info L inner join user_info U on L.user_seq = U.user_seq where U.user_seq = ?)";
   conn.query(sql, [user_seq], function (err, rows) {
     if (rows) {
 
@@ -255,7 +255,75 @@ router.post("/InsertList", function (request, response) {
       console.log("재생목록 업데이트 실패!" + err);
     }
   });
-
-
 });
+
+router.post("/TagList", function (request, response) {
+  console.log("태그곡 업데이트!");
+  const tagName = request.body.tagName;
+  console.log(tagName);
+
+  let artist_name = [];
+  let song_title = [];
+  let album_img = [];
+  let artist_id = [];
+  let song_id = [];
+  let song_lyrics = [];
+
+  let sql = "select tag_theme from tag_info where tag_name = ?";
+  conn.query(sql, [tagName], function (err, rows) {
+    console.log(rows[0].tag_theme);
+    let tag_theme = rows[0].tag_theme.split(", ");
+    if(tag_theme.length==1){
+      if(rows.length>0){
+
+        for(let i=0;i<9;i++){
+          let ranNum = parseInt(Math.random() * rows.length);    
+          artist_name.push(rows[ranNum].artist_name);
+          song_title.push(rows[ranNum].song_title);
+          album_img.push(rows[ranNum].album_id);
+          artist_id.push(rows[ranNum].artist_id);
+          song_id.push(rows[ranNum].song_id);
+          song_lyrics.push(rows[ranNum].song_lyrics);
+        }
+  
+        console.log(artist_name);
+        response.json({
+          song_title : song_title,
+          artist_name : artist_name,
+          album_img : album_img,
+          artist_id : artist_id,
+          song_id : song_id,
+          song_lyrics : song_lyrics
+        });
+  
+      }
+    } else{
+      if(rows.length>0){
+
+        for(let i=0;i<9;i++){
+          let ranNum = parseInt(Math.random() * rows.length);    
+          artist_name.push(rows[ranNum].artist_name);
+          song_title.push(rows[ranNum].song_title);
+          album_img.push(rows[ranNum].album_id);
+          artist_id.push(rows[ranNum].artist_id);
+          song_id.push(rows[ranNum].song_id);
+          song_lyrics.push(rows[ranNum].song_lyrics);
+        }
+  
+        console.log(artist_name);
+        response.json({
+          song_title : song_title,
+          artist_name : artist_name,
+          album_img : album_img,
+          artist_id : artist_id,
+          song_id : song_id,
+          song_lyrics : song_lyrics
+        });
+  
+      }
+    }
+    
+  });
+});
+
 module.exports = router;
