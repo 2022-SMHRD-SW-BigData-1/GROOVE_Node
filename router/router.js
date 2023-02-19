@@ -80,7 +80,7 @@ router.post("/Login", function (request, response) {
         favArt : rows[0].user_favart,
         recentSong : rows[0].user_recent,
         favSong : rows[0].user_favsong,
-        song_list : song_list.reverse()
+        song_list : song_list
       })
     } else {
       console.log("로그인 실패!" + err);
@@ -188,7 +188,7 @@ router.post("/SongList", function (request, response) {
   let album_img = [];
   let song_lyrics = [];
   
-  let sql = "select distinct R.song_lyrics, S.song_title, A.artist_name, S.album_id from song_info S inner join artist_song C on S.song_id = C.song_id inner join artist_info A on C.artist_id = A.artist_id inner join lyrics_info R on S.song_id = R.song_id where S.song_id in (select distinct L.song_id from songlist_info L inner join user_info U on L.user_seq = U.user_seq where U.user_seq = ?)";
+  let sql = "select L.song_id, S.song_title, A.artist_name, S.album_id, R.song_lyrics from song_info S inner join artist_song C on S.song_id = C.song_id inner join artist_info A on C.artist_id = A.artist_id inner join lyrics_info R on S.song_id = R.song_id inner join (select user_seq, song_id, max(songlist_date) as maxDate from songlist_info group by user_seq, song_id order by maxDate desc) L on L.song_id = S.song_id where L.user_seq = ?";
   conn.query(sql, [user_seq], function (err, rows) {
     if (rows) {
 
@@ -205,10 +205,10 @@ router.post("/SongList", function (request, response) {
       console.log(album_img);
 
       response.json({
-        song_title : song_title.reverse(),
-        artist_name : artist_name.reverse(),
-        album_img : album_img.reverse(),
-        song_lyrics : song_lyrics.reverse()
+        song_title : song_title,
+        artist_name : artist_name,
+        album_img : album_img,
+        song_lyrics : song_lyrics
       });
       
 
@@ -232,18 +232,18 @@ router.post("/InsertList", function (request, response) {
   let sql = "insert into songlist_info(user_seq, song_id) values(?, ?)";
   conn.query(sql, [user_seq, song_id], function (err, rows) {
     if (!err) {
-      sql = "select distinct * from songlist_info";
+      sql = "select user_seq, song_id, max(songlist_date) as maxDate from songlist_info group by user_seq, song_id order by maxDate desc";
       conn.query(sql, function(err, rows){
 
         for(let i=0; i<rows.length; i++){
           song_list.push(rows[i].song_id);
         }
         console.log(song_list);
-        console.log(song_list.reverse());
+
 
         response.json({
           result : "재생목록 업데이트!",
-          song_list : song_list.reverse()
+          song_list : song_list
         });
         
 
@@ -269,11 +269,8 @@ router.post("/TagList", function (request, response) {
   let song_id = [];
   let song_lyrics = [];
 
-  let sql = "select tag_theme from tag_info where tag_name = ?";
+  let sql = "select distinct A.artist_name, S.song_title, S.album_id, A.artist_id, S.song_id, L.song_lyrics from song_info S inner join artist_song C on S.song_id = C.song_id inner join artist_info A on C.artist_id = A.artist_id inner join lyrics_info L on S.song_id = L.song_id where S.song_id in ((select song_id from song_info where song_theme in (select tag_theme from tag_info where tag_name = ?)))";
   conn.query(sql, [tagName], function (err, rows) {
-    console.log(rows[0].tag_theme);
-    let tag_theme = rows[0].tag_theme.split(", ");
-    if(tag_theme.length==1){
       if(rows.length>0){
 
         for(let i=0;i<9;i++){
@@ -295,34 +292,66 @@ router.post("/TagList", function (request, response) {
           song_id : song_id,
           song_lyrics : song_lyrics
         });
-  
       }
-    } else{
-      if(rows.length>0){
+  });
+});
 
-        for(let i=0;i<9;i++){
-          let ranNum = parseInt(Math.random() * rows.length);    
-          artist_name.push(rows[ranNum].artist_name);
-          song_title.push(rows[ranNum].song_title);
-          album_img.push(rows[ranNum].album_id);
-          artist_id.push(rows[ranNum].artist_id);
-          song_id.push(rows[ranNum].song_id);
-          song_lyrics.push(rows[ranNum].song_lyrics);
+router.post("/RecentSong", function (request, response) {
+  console.log("최근 들은 곡 불러오기");
+  const user_seq = request.body.user_seq;
+  console.log(user_seq);
+  let album_img = [];
+  let song_id = [];
+  let song_title = [];
+  let sql = "select S.song_id, S.song_title, S.album_id, L.maxDate from song_info S inner join (select user_seq, song_id, max(songlist_date) as maxDate from songlist_info group by user_seq, song_id order by maxDate desc) L on S.song_id = L.song_id where user_seq = 1 limit 4";
+  conn.query(sql, [user_seq], function (err, rows) {
+    if (!err) {
+     console.log(rows);
+        for(let i=0; i<rows.length; i++){
+          song_title.push(rows[i].song_title);
+          song_id.push(rows[i].song_id);
+          album_img.push(rows[i].album_id);
         }
-  
-        console.log(artist_name);
+        console.log(album_img);
+        console.log(song_id);
+        console.log(song_title);
         response.json({
-          song_title : song_title,
-          artist_name : artist_name,
-          album_img : album_img,
-          artist_id : artist_id,
+          album_id : album_img,
           song_id : song_id,
-          song_lyrics : song_lyrics
+          song_title : song_title
         });
-  
-      }
+    } else {
+      console.log("최근 들은 곡 불러오기 실패!" + err);
     }
-    
+  });
+});
+
+router.post("/LikesAdd", function (request, response) {
+  console.log("좋아요 정보 저장!!");
+  const user_seq = request.body.user_seq;
+  const song_id = request.body.song_id;
+  console.log(user_seq);
+
+  let sql = "select SL.user_seq, SL.song_id, L.likes_date, max(SL.songlist_date) as maxDate from songlist_info SL inner join likes_info L on SL.user_seq = L.user_seq where SL.song_id = L.song_id group by SL.user_seq, SL.song_id, L.likes_date order by maxDate desc";
+  conn.query(sql, [user_seq], function (err, rows) {
+    if (!err) {
+     console.log(rows);
+        for(let i=0; i<rows.length; i++){
+          song_title.push(rows[i].song_title);
+          song_id.push(rows[i].song_id);
+          album_img.push(rows[i].album_id);
+        }
+        console.log(album_img);
+        console.log(song_id);
+        console.log(song_title);
+        response.json({
+          album_id : album_img,
+          song_id : song_id,
+          song_title : song_title
+        });
+    } else {
+      console.log("좋아요 정보 저장 실패!" + err);
+    }
   });
 });
 
