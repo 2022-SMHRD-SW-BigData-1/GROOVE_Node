@@ -232,25 +232,31 @@ router.post("/InsertList", function (request, response) {
   let sql = "insert into songlist_info(user_seq, song_id) values(?, ?)";
   conn.query(sql, [user_seq, song_id], function (err, rows) {
     if (!err) {
+      console.log("재생목록 업데이트!");
       sql = "select user_seq, song_id, max(songlist_date) as maxDate from songlist_info group by user_seq, song_id order by maxDate desc";
       conn.query(sql, function(err, rows){
-
-        for(let i=0; i<rows.length; i++){
-          song_list.push(rows[i].song_id);
+        if(!err){
+          console.log("업데이트 된 재생목록 불러오기!");
+          for(let i=0; i<rows.length; i++){
+            song_list.push(rows[i].song_id);
+          }
+          sql = "select SL.user_seq, SL.song_id, L.likes_date from (select user_seq, song_id, max(songlist_date) as maxDate from songlist_info group by user_seq, song_id) SL inner join likes_info L on SL.user_seq = L.user_seq where SL.song_id = L.song_id and L.user_seq = ? and L.song_id = ? group by SL.user_seq, SL.song_id, L.likes_date order by maxDate desc";
+          conn.query(sql, [user_seq, song_id], function(err, rows){
+            if(!err){
+              console.log("좋아요 정보 불러오기 성공!");
+              let bool_likes = rows.length;
+              response.json({
+                bool_likes : bool_likes,
+                song_list : song_list
+              });              
+            } else{
+              console.log("좋아요 정보 불러오기 실패!" + err);
+            }
+          })
+        } else{
+          console.log("업데이트 된 재생목록 불러오기 실패!" + err);
         }
-        console.log(song_list);
-
-
-        response.json({
-          result : "재생목록 업데이트!",
-          song_list : song_list
-        });
-        
-
       })
-      
-
-
     } else {
       console.log("재생목록 업데이트 실패!" + err);
     }
@@ -331,24 +337,16 @@ router.post("/LikesAdd", function (request, response) {
   const user_seq = request.body.user_seq;
   const song_id = request.body.song_id;
   console.log(user_seq);
+  console.log(song_id);
 
-  let sql = "select SL.user_seq, SL.song_id, L.likes_date, max(SL.songlist_date) as maxDate from songlist_info SL inner join likes_info L on SL.user_seq = L.user_seq where SL.song_id = L.song_id group by SL.user_seq, SL.song_id, L.likes_date order by maxDate desc";
-  conn.query(sql, [user_seq], function (err, rows) {
+  
+
+  let sql = "insert into likes_info(user_seq, song_id) values(?, ?);";
+  conn.query(sql, [user_seq, song_id], function (err, rows) {
     if (!err) {
-     console.log(rows);
-        for(let i=0; i<rows.length; i++){
-          song_title.push(rows[i].song_title);
-          song_id.push(rows[i].song_id);
-          album_img.push(rows[i].album_id);
-        }
-        console.log(album_img);
-        console.log(song_id);
-        console.log(song_title);
-        response.json({
-          album_id : album_img,
-          song_id : song_id,
-          song_title : song_title
-        });
+      response.json({
+        results : "좋아요 정보 저장 성공!!"
+      });
     } else {
       console.log("좋아요 정보 저장 실패!" + err);
     }
