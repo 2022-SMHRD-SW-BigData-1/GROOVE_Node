@@ -195,7 +195,7 @@ router.post("/SongList", function (request, response) {
   
   // let sql = "select L.song_id, S.song_title, A.artist_name, S.album_id, R.song_lyrics from song_info S inner join artist_song C on S.song_id = C.song_id inner join artist_info A on C.artist_id = A.artist_id inner join lyrics_info R on S.song_id = R.song_id inner join (select user_seq, song_id, max(songlist_date) as maxDate from songlist_info group by user_seq, song_id) L on L.song_id = S.song_id where L.user_seq = ? order by maxDate desc";
   // let sql = "select L.song_id, S.song_title, A.artist_name, S.album_id, R.song_lyrics from song_info S inner join artist_song C on S.song_id = C.song_id inner join artist_info A on C.artist_id = A.artist_id inner join lyrics_info R on S.song_id = R.song_id inner join songlist_info L on L.song_id = S.song_id where L.user_seq = ? order by songlist_date desc";
-  let sql = "select SL.song_id, SL.songlist_date, S.song_title, S.album_id, A.artist_name from song_info S inner join songlist_info SL on SL.song_id = S.song_id inner join artist_song C on S.song_id = C.song_id inner join artist_info A on C.artist_id = A.artist_id where S.song_id in ((select song_id from songlist_info where user_seq = 1)) order by SL.songlist_date desc";
+  let sql = "select SL.song_id, SL.songlist_date, S.song_title, S.album_id, A.artist_name from song_info S inner join songlist_info SL on SL.song_id = S.song_id inner join artist_song C on S.song_id = C.song_id inner join artist_info A on C.artist_id = A.artist_id where S.song_id in ((select song_id from songlist_info where user_seq = ?)) order by SL.songlist_date desc";
   conn.query(sql, [user_seq], function (err, rows) {
     if (rows) {
 
@@ -237,8 +237,8 @@ router.post("/InsertList", function (request, response) {
   conn.query(sql, [user_seq, song_id], function (err, rows) {
     if (!err) {
       console.log("재생목록 업데이트!");
-      sql = "select SL.song_id, SL.songlist_date, S.song_title, S.album_id, A.artist_name from song_info S inner join songlist_info SL on SL.song_id = S.song_id inner join artist_song C on S.song_id = C.song_id inner join artist_info A on C.artist_id = A.artist_id where S.song_id in ((select song_id from songlist_info where user_seq = 1)) order by SL.songlist_date desc";
-      conn.query(sql, function(err, rows){
+      sql = "select SL.song_id, SL.songlist_date, S.song_title, S.album_id, A.artist_name from song_info S inner join songlist_info SL on SL.song_id = S.song_id inner join artist_song C on S.song_id = C.song_id inner join artist_info A on C.artist_id = A.artist_id where S.song_id in ((select song_id from songlist_info where user_seq = ?)) order by SL.songlist_date desc";
+      conn.query(sql, [user_seq], function(err, rows){
         if(!err){
           console.log("업데이트 된 재생목록 불러오기!");
           for(let i=0; i<rows.length; i++){
@@ -327,7 +327,7 @@ router.post("/TagList", function (request, response) {
   let song_id = [];
   let song_lyrics = [];
 
-  let sql = "select distinct A.artist_name, S.song_title, S.album_id, A.artist_id, S.song_id, L.song_lyrics from song_info S inner join artist_song C on S.song_id = C.song_id inner join artist_info A on C.artist_id = A.artist_id inner join lyrics_info L on S.song_id = L.song_id where S.song_id in ((select song_id from song_info where song_theme in (select tag_theme from tag_info where tag_name = ?)))";
+  let sql = "select T.tag_ment, T.tag_theme, A.artist_name, S.song_title, S.album_id, A.artist_id, S.song_id, L.song_lyrics from song_info S inner join artist_song C on S.song_id = C.song_id inner join artist_info A on C.artist_id = A.artist_id inner join lyrics_info L on S.song_id = L.song_id inner join tag_info T on T.tag_name = ? where S.song_theme in (T.tag_theme)";
   conn.query(sql, [tagName], function (err, rows) {
       if(rows.length>0){
 
@@ -365,7 +365,8 @@ router.post("/TagList", function (request, response) {
           album_img : album_img,
           artist_id : artist_id,
           song_id : song_id,
-          song_lyrics : song_lyrics
+          song_lyrics : song_lyrics,
+          tag_ment : rows[0].tag_ment,
         });
       }
   });
@@ -385,9 +386,9 @@ router.post("/RecentSong", function (request, response) {
   let fav_name = [];
 
   // let sql = "select S.song_id, S.song_title, S.album_id, L.maxDate from song_info S inner join (select user_seq, song_id, max(songlist_date) as maxDate from songlist_info group by user_seq, song_id order by maxDate desc) L on S.song_id = L.song_id where user_seq = ? limit 4";
-  let sql = "select SL.song_id, SL.songlist_date, S.song_title, S.album_id, A.artist_name from song_info S inner join songlist_info SL on SL.song_id = S.song_id inner join artist_song C on S.song_id = C.song_id inner join artist_info A on C.artist_id = A.artist_id where S.song_id in ((select song_id from songlist_info where user_seq = 1)) order by SL.songlist_date desc limit 4";
+  let sql = "select SL.song_id, SL.songlist_date, S.song_title, S.album_id, A.artist_name from song_info S inner join songlist_info SL on SL.song_id = S.song_id inner join artist_song C on S.song_id = C.song_id inner join artist_info A on C.artist_id = A.artist_id where S.song_id in ((select song_id from songlist_info where user_seq = ?)) order by SL.songlist_date desc limit 4";
   conn.query(sql, [user_seq], function (err, rows) {
-    if (!err) {
+    if (rows) {
       console.log("최근 곡 불러오기 성공!")
       for(let i=0; i<rows.length; i++){
         song_title.push(rows[i].song_title);
