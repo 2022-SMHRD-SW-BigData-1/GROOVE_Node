@@ -192,7 +192,8 @@ router.post("/SongList", function (request, response) {
   let album_img = [];
   let song_lyrics = [];
   
-  let sql = "select L.song_id, S.song_title, A.artist_name, S.album_id, R.song_lyrics from song_info S inner join artist_song C on S.song_id = C.song_id inner join artist_info A on C.artist_id = A.artist_id inner join lyrics_info R on S.song_id = R.song_id inner join (select user_seq, song_id, max(songlist_date) as maxDate from songlist_info group by user_seq, song_id) L on L.song_id = S.song_id where L.user_seq = ? order by maxDate desc";
+  // let sql = "select L.song_id, S.song_title, A.artist_name, S.album_id, R.song_lyrics from song_info S inner join artist_song C on S.song_id = C.song_id inner join artist_info A on C.artist_id = A.artist_id inner join lyrics_info R on S.song_id = R.song_id inner join (select user_seq, song_id, max(songlist_date) as maxDate from songlist_info group by user_seq, song_id) L on L.song_id = S.song_id where L.user_seq = ? order by maxDate desc";
+  let sql = "select L.song_id, S.song_title, A.artist_name, S.album_id, R.song_lyrics from song_info S inner join artist_song C on S.song_id = C.song_id inner join artist_info A on C.artist_id = A.artist_id inner join lyrics_info R on S.song_id = R.song_id inner join songlist_info L on L.song_id = S.song_id where L.user_seq = ? order by songlist_date desc";
   conn.query(sql, [user_seq], function (err, rows) {
     if (rows) {
 
@@ -413,6 +414,36 @@ router.post("/RecentSong", function (request, response) {
       });
     } else {
       console.log("최근 곡 불러오기 실패!" + err);
+    }
+  });
+});
+
+router.post("/Choice_art", function (request, response) {
+  console.log("선호 아티스트 불러오기 성공!");
+  let artist_id = [];
+  let artist_name = [];
+  
+  let sql = "select artist_id, artist_name from artist_info";
+  conn.query(sql, function (err, rows) {
+    if (rows) {
+        console.log("if문 확인")
+        console.log(rows.length);
+      for(let i=0; i<rows.length; i++){
+        let ranNum = parseInt(Math.random() * rows.length);
+        artist_id.push(rows[ranNum].artist_id);
+        artist_name.push(rows[ranNum].artist_name);
+        
+      }
+      console.log(artist_id);
+      console.log(artist_name);
+      
+      response.json({
+        // key , value
+        artist_id : artist_id,
+        artist_name : artist_name,
+      });
+    } else {
+      console.log("선호아티스트 불러오기 실패!" + err);
     }
   });
 });
