@@ -59,8 +59,12 @@ router.post("/Login", function (request, response) {
   const userId = request.body.id;
   const userPw = request.body.pw;
   let song_list = [];
+  let song_title = [];
+  let artist_name = [];
+  let album_img = [];
+
   console.log(request.body);
-  let sql = "select U.*, S.song_id, S.songlist_date from user_info U inner join songlist_info S on U.user_seq = S.user_seq where user_id = ? and user_pw = sha1(?)";
+  let sql = "select U.*, SL.song_id, SL.maxDate, S.song_title, S.album_id, A.artist_name from user_info U inner join (select user_seq, song_id, max(songlist_date) as maxDate from songlist_info group by user_seq, song_id) SL on U.user_seq = SL.user_seq inner join artist_song C on SL.song_id = C.song_id inner join artist_info A on C.artist_id = A.artist_id inner join song_info S on SL.song_id = S.song_id where user_id = ? and user_pw = sha1(?) order by SL.maxDate DESC";
   conn.query(sql, [userId, userPw], function (err, rows) {
     if (rows) {
       console.log("로그인 성공!");
@@ -70,8 +74,11 @@ router.post("/Login", function (request, response) {
         rows[0].user_favart = "";
       }
       for(let i=0; i<rows.length; i++){
-        console.log(rows[i].song_id);
+        // console.log(rows[i].song_id);
         song_list.push(rows[i].song_id);
+        song_title.push(rows[i].song_title);
+        artist_name.push(rows[i].artist_name);
+        album_img.push(rows[i].album_id);
       }
       
       response.json({
@@ -81,7 +88,10 @@ router.post("/Login", function (request, response) {
         favArt : rows[0].user_favart,
         recentSong : rows[0].user_recent,
         favSong : rows[0].user_favsong,
-        song_list : song_list
+        song_list : song_list,
+        stitle_list : song_title,
+        aname_list : artist_name,
+        salbum_list : album_img
       })
     } else {
       console.log("로그인 실패!" + err);
