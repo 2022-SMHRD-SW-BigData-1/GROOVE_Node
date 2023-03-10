@@ -404,7 +404,7 @@ router.post("/RecentSong", function (request, response) {
             song_title_likes.push(rows[i].song_title);
             album_img_likes.push(rows[i].album_id);
           }
-          sql = "select artist_name, artist_id from artist_info where artist_id in ((select substring_index( (select user_favart from user_info where user_seq = 1), ', ', 1)), (select substring_index( (select substring_index( (select user_favart from user_info where user_seq = 1), ', ', 2) ), ', ', -1)), (select substring_index( (select user_favart from user_info where user_seq = 1), ', ', -1)))";
+          sql = "select artist_name, artist_id from artist_info where artist_id in ((select substring_index( (select user_favart from user_info where user_seq = ?), ', ', 1)), (select substring_index( (select substring_index( (select user_favart from user_info where user_seq = ?), ', ', 2) ), ', ', -1)), (select substring_index( (select user_favart from user_info where user_seq = ?), ', ', -1)))";
           conn.query(sql, [user_seq, user_seq, user_seq], function (err, rows) {
             if(!err){
               console.log("선호 아티스트 불러오기 성공!");
