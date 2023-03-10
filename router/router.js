@@ -675,7 +675,7 @@ router.post("/Research", function (request, response) {
   
   let search_content = [];
   
-  let sql = "select search_content from search_info where user_seq = ?";
+  let sql = "select search_content from search_info where user_seq = ? order by songlist_date desc limit 15";
   conn.query(sql, [user_seq], function (err, rows) {
     if (rows) {
       console.log("검색어 불러오기 성공!")
@@ -724,7 +724,8 @@ router.post("/SearchList", function (request, response) {
       search_cont += search_content[i]+"%";
     }
   }
-  let song_id = [];
+  let song_id = []
+  let song_title = [];
   let artist_id = [];
   let album_id = [];
   
@@ -736,12 +737,14 @@ router.post("/SearchList", function (request, response) {
       console.log("검색 성공!")
       for (let i = 0; i < rows.length; i++){
         song_id.push(rows[i].song_id);
-        artist_id.push(rows[i].artist_id);
+        song_title.push(rows[i].song_title);
+        artist_id.push(rows[i].artist_name);
         album_id.push(rows[i].album_id);
       }
-
+      console.log(rows);
       response.json({
         song_id : song_id,
+        song_title : song_title,
         artist_id : artist_id,
         album_id : album_id
       });
