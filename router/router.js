@@ -404,7 +404,7 @@ router.post("/RecentSong", function (request, response) {
             song_title_likes.push(rows[i].song_title);
             album_img_likes.push(rows[i].album_id);
           }
-          sql = "select artist_name, artist_id from artist_info where artist_id in ((select substring_index( (select user_favart from user_info where user_seq = 1), ', ', 1)), (select substring_index( (select substring_index( (select user_favart from user_info where user_seq = 1), ', ', 2) ), ', ', -1)), (select substring_index( (select user_favart from user_info where user_seq = 1), ', ', -1)))";
+          sql = "select artist_name, artist_id from artist_info where artist_id in ((select substring_index( (select user_favart from user_info where user_seq = ?), ', ', 1)), (select substring_index( (select substring_index( (select user_favart from user_info where user_seq = ?), ', ', 2) ), ', ', -1)), (select substring_index( (select user_favart from user_info where user_seq = ?), ', ', -1)))";
           conn.query(sql, [user_seq, user_seq, user_seq], function (err, rows) {
             if(!err){
               console.log("선호 아티스트 불러오기 성공!");
@@ -665,6 +665,89 @@ router.post("/Lyrics", function (request, response) {
 
     } else {
       console.log("가사 불러오기 실패!" + err);
+    }
+  });
+});
+
+router.post("/Research", function (request, response) {
+  console.log("최근 검색어 서버 접속!");
+  const user_seq = request.body.user_seq;
+  
+  let search_content = [];
+  
+  let sql = "select search_content from search_info where user_seq = ?";
+  conn.query(sql, [user_seq], function (err, rows) {
+    if (rows) {
+      console.log("검색어 불러오기 성공!")
+
+      for (let i = 0; i < rows.length; i++){
+        search_content.push(rows[i].search_content);
+      }
+      response.json({
+        search_content : search_content
+      });
+
+    } else {
+      console.log("가사 불러오기 실패!" + err);
+    }
+  });
+});
+
+router.post("/Search", function (request, response) {
+  console.log("검색창 서버 접속!");
+  const user_seq = request.body.user_seq;
+  const search_content = request.body.search_content;
+
+  let sql = "insert into search_info(user_seq, search_content) values(?, ?)";
+  conn.query(sql, [user_seq, search_content], function(err, rows){
+    if (rows) {
+      console.log("검색 성공!")
+      response.json({
+        result : "검색 성공이라요"
+      });
+    } else {
+      console.log("검색 실패!" + err);
+    }
+  });
+});
+
+router.post("/SearchList", function (request, response) {
+  console.log("검색 서버 접속!");
+  const user_seq = request.body.user_seq;
+  const search_content = request.body.search_content;
+  let search_cont = "";
+
+  for (let i=0; i<search_content.length; i++){
+    if (i==0){
+      search_cont += "%"+search_content[i]+"%";
+    } else {
+      search_cont += search_content[i]+"%";
+    }
+  }
+  let song_id = [];
+  let artist_id = [];
+  let album_id = [];
+  console.log(search_cont);
+
+  console.log(search_cont);
+  let sql = "select * from song_info S inner join artist_song C on S.song_id = C.song_id inner join artist_info A on C.artist_id = A.artist_id where song_title like ? or artist_name like ?";
+  conn.query(sql, [search_cont, search_cont], function (err, rows) {
+    if (rows) {
+      console.log("검색 성공!")
+      for (let i = 0; i < rows.length; i++){
+        song_id.push(rows[i].song_id);
+        artist_id.push(rows[i].artist_id);
+        album_id.push(rows[i].album_id);
+      }
+
+      response.json({
+        song_id : song_id,
+        artist_id : artist_id,
+        album_id : album_id
+      });
+
+    } else {
+      console.log("검색 실패!" + err);
     }
   });
 });
