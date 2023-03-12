@@ -754,4 +754,58 @@ router.post("/SearchList", function (request, response) {
     }
   });
 });
+
+router.post("/RelativeSongs", function (request, response) {
+  console.log("가사 불러오기 서버 접속!");
+  const song_id = parseInt(request.body.song_id);
+  
+  let song_lyrics;
+  
+  let sql = "select S.song_id, S.song_title, S.album_id from song_info S inner join artist_song C on S.song_id = C.song_id inner join artist_info A on C.artist_id = A.artist_id where A.artist_id = (select A.artist_id from song_info S inner join artist_song C on S.song_id = C.song_id inner join artist_info A on C.artist_id = A.artist_id where S.song_id = ?)";
+  conn.query(sql, [song_id], function (err, rows) {
+    if (rows) {
+      console.log("연관곡 불러오기 성공!")
+
+      let ranNum = [];
+      let j=0;
+
+      let song_id = [];
+      let song_title = [];
+      let album_id = [];
+
+      while(j<rows.length){
+        let n = parseInt(Math.random() * rows.length);
+        if(!sameNum(n)){
+          ranNum.push(n);
+          j++;
+        }
+      }
+      function sameNum(n){
+        for(let i=0; i<ranNum.length; i++){
+          if(n === ranNum[i]){
+            return true;
+          }
+        }
+        return false;
+      }
+
+      for(let i=0;i<3;i++){ 
+        song_id.push(rows[ranNum[i]].song_id);
+        song_title.push(rows[ranNum[i]].song_title);
+        album_id.push(rows[ranNum[i]].album_id);
+      }
+
+      response.json({
+        result : "연관곡 불러오기 성공!",
+        song_list : song_id,
+        stitle_list : song_title,
+        salbum_list : album_id
+      });
+
+    } else {
+      console.log("가사 불러오기 실패!" + err);
+    }
+  });
+});
+
 module.exports = router;
